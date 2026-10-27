@@ -73,8 +73,14 @@ def run(config):
                    f"itemLocationCountry:{country}" if search.get("pickup") else f"deliveryCountry:{country}"]
         if search.get("conditions"):
             filters.append("conditions:{" + "|".join(search["conditions"]) + "}")
-        items = client.search(keywords=search.get("keywords", ""), category_ids=search.get("category_ids", []),
-                              filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000))
+        # Die Browse API nimmt nur eine Kategorie pro Suche, daher je Kategorie einzeln abfragen.
+        items, seen_ids = [], set()
+        for cat_id in search.get("category_ids") or [None]:
+            for i in client.search(keywords=search.get("keywords", ""), category_ids=[cat_id] if cat_id else [],
+                                   filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000)):
+                if i["itemId"] not in seen_ids:
+                    seen_ids.add(i["itemId"])
+                    items.append(i)
         # "sofortkauf": nur Auktionen mit Sofortkauf-Option, Gebot direkt gegen Sofortkaufpreis.
         # "vergleich": zusätzlich Auktionen ohne Sofortkauf über Vergleichsangebote bewerten.
         compare = search.get("compare", "sofortkauf")

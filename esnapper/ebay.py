@@ -44,7 +44,8 @@ class EbayClient:
     def _get(self, path, params=None):
         self.calls += 1
         r = requests.get(f"{API}{path}", headers=self._auth_header(), params=params, timeout=30)
-        r.raise_for_status()
+        if not r.ok:
+            raise RuntimeError(f"eBay-Fehler {r.status_code} bei {path} {params}: {r.text[:500]}")
         return r.json()
 
     def search(self, *, keywords="", category_ids=(), filters=(), sort=None, limit=200, max_items=1000):

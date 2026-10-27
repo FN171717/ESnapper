@@ -11,8 +11,9 @@ SCOPE = "https://api.ebay.com/oauth/api_scope"
 
 class EbayClient:
     def __init__(self, client_id, client_secret, marketplace="EBAY_DE"):
-        self.client_id = client_id
-        self.client_secret = client_secret
+        # Beim Kopieren in die Secrets rutschen gern Leerzeichen oder Zeilenumbrüche mit.
+        self.client_id = client_id.strip()
+        self.client_secret = client_secret.strip()
         self.marketplace = marketplace
         self.calls = 0
         self._token = None
@@ -28,6 +29,11 @@ class EbayClient:
                 data={"grant_type": "client_credentials", "scope": SCOPE},
                 timeout=30,
             )
+            if r.status_code == 401:
+                raise RuntimeError(
+                    "eBay lehnt die Keys ab (401). Prüfen: Production-Keys statt Sandbox (App ID enthält 'PRD'), "
+                    "App ID als EBAY_CLIENT_ID, Cert ID als EBAY_CLIENT_SECRET, Keyset aktiviert. "
+                    f"Antwort von eBay: {r.text[:300]}")
             r.raise_for_status()
             body = r.json()
             self._token = body["access_token"]

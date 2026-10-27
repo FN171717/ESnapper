@@ -21,7 +21,7 @@ def auction(item_id="1", title="Festool Kappsäge KS 120 REB", bid="100.00", shi
     return item
 
 
-SEARCH = {"name": "Test", "category_ids": ["12576"], "min_saving": 0.3, "min_price": 20, "max_price": 2000,
+SEARCH = {"name": "Test", "category_ids": ["12576"], "min_saving": 0.3, "min_difference": 50, "min_price": 20, "max_price": 2000,
           "max_shipping": 50, "exclude_words": ["defekt"], "min_seller_feedback": 97}
 
 
@@ -118,3 +118,21 @@ def test_notification_channels(monkeypatch):
     monkeypatch.setenv("NTFY_TOPIC", "esnapper-test")
     assert notify.send_notification("x") is True
     assert calls == [("ntfy", "esnapper-test")]
+
+
+@pytest.mark.parametrize("bid,ship,ref,hit", [
+    (20000, 0, 22000, False),   # Auto: 2.000 € Differenz, aber nur 9 %
+    (50, 0, 100, False),        # 50 %, aber nur 50 €
+    (500, 20, 1000, True),      # 480 € und 48 %
+    (700, 0, 1000, True),       # genau 300 € / 30 %
+])
+def test_hit_needs_euro_and_percent(bid, ship, ref, hit):
+    search = {"min_difference": 200, "min_saving": 0.25}
+    assert score.evaluate(bid, ship, ref, search)["is_hit"] is hit
+
+
+def test_rating_prefers_big_and_safe_deals():
+    search = {"min_difference": 0, "min_saving": 0}
+    big = score.evaluate(600, 0, 1000, search)["rating"]     # 400 € × 40 %
+    thin = score.evaluate(9000, 0, 10000, search)["rating"]  # 1.000 € × 10 %
+    assert big > thin

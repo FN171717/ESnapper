@@ -11,7 +11,9 @@ searches:
     category_ids: ["12576"]   # eBay.de: Business & Industrie
     keywords: ""              # optional, z. B. "Festool" oder "Hilti"
     ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
-    min_saving: 0.30          # ab 30 % unter Vergleichspreis = Treffer
+    # Treffer nur, wenn BEIDES erfüllt ist (Gebot + Versand gegen Vergleichspreis):
+    min_difference: 200       # mindestens so viele Euro günstiger
+    min_saving: 0.25          # und mindestens so viel Prozent günstiger
     min_price: 20             # aktuelles Gebot in EUR
     max_price: 2000
     max_shipping: 50          # Versandkosten in EUR, leer = egal

@@ -9,7 +9,7 @@ Alle 15 Minuten startet GitHub Actions einen Lauf:
 1. Über die offizielle eBay Browse API werden die Auktionen jeder Suche aus `config.yaml` abgefragt, die im eingestellten Zeitfenster enden.
 2. Filter: Preisspanne, Versandkosten, Zustand, Ausschlusswörter, Verkäuferbewertung.
 3. Für jeden neuen Artikel wird einmalig ein Referenzpreis bestimmt: der Sofortkaufpreis der Auktion, sonst der Median vergleichbarer Sofortkauf-Angebote (Suche mit den Kernbegriffen des Titels, gleiche Kategorie, gleicher Zustand).
-4. Ersparnis = 1 − (Gebot + Versand) / Referenzpreis. Ab `min_saving` ist es ein Treffer.
+4. Treffer nur, wenn **beides** erfüllt ist: Differenz = Referenzpreis − Gebot − Versand mindestens `min_difference` Euro **und** Ersparnis = Differenz / Referenzpreis mindestens `min_saving`. Der Euro-Wert sorgt dafür, dass es sich lohnt, der Prozentwert für Puffer: 20.000 € Gebot bei 22.000 € Sofortkauf sind zwar 2.000 €, aber nur 9 % und damit kein Treffer. Treffer werden nach Bewertung = Differenz × Ersparnis sortiert gemeldet.
 5. Bei Treffern wird geprüft, ob ein Mindestpreis nicht erreicht ist. Solche Artikel fallen raus.
 6. Neue Treffer gehen gesammelt an jeden eingerichteten Kanal (ntfy, WhatsApp), jeder nur einmal. Die Übersicht landet auf GitHub Pages.
 

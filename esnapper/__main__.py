@@ -93,8 +93,8 @@ def run(config):
                 continue
 
             bid, ship = score.current_bid(item), score.shipping_cost(item)
-            saving = score.saving(bid, ship, entry["reference"])
-            is_hit = saving is not None and saving >= search.get("min_saving", 0.3)
+            result = score.evaluate(bid, ship, entry["reference"], search)
+            is_hit = result["is_hit"]
 
             # Mindestpreis nur bei Kandidaten prüfen, das spart API-Aufrufe.
             if is_hit and entry["reserve_ok"] is not True:
@@ -107,7 +107,8 @@ def run(config):
                 "id": item_id, "title": item.get("title", ""), "url": item.get("itemWebUrl", ""),
                 "image": item.get("image", {}).get("imageUrl"), "bid": bid, "bid_count": item.get("bidCount", 0),
                 "shipping": ship, "reference": entry["reference"], "reference_source": entry["reference_source"],
-                "saving": saving, "end": item["itemEndDate"], "is_hit": is_hit, "search": search["name"],
+                "saving": result["saving"], "difference": result["difference"], "rating": result["rating"],
+                "end": item["itemEndDate"], "is_hit": is_hit, "search": search["name"],
                 "ends_local": parse_time(item["itemEndDate"]).astimezone(LOCAL_TZ).strftime("%d.%m. %H:%M"),
             }
             rows.append(row)
@@ -116,6 +117,7 @@ def run(config):
                 entry["notified"] = True
 
     if new_hits:
+        new_hits.sort(key=lambda h: h["rating"], reverse=True)
         send_notification(format_hits(new_hits))
 
     # Beendete Auktionen vergessen.

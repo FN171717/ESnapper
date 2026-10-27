@@ -73,7 +73,7 @@ ITEM = """<a class="item{hit}" href="{url}" target="_blank" rel="noopener">
   <img src="{img}" alt="" loading="lazy">
   <div><div class="title">{title}</div>
     <div class="sub">{bid:.2f} € · {bids} Gebot(e) · Versand {ship} · Vergleich {ref:.2f} € ({src})</div></div>
-  <div class="right"><div class="saving">{saving:+.0f} %</div><div class="left" data-end="{end}"></div></div>
+  <div class="right"><div class="saving">{saving:+.0f} %</div><div class="left">{diff:+.0f} €</div><div class="left" data-end="{end}"></div></div>
 </a>"""
 
 
@@ -91,6 +91,7 @@ def render(rows, generated_iso, out_dir="site"):
             ref=r["reference"],
             src=html.escape(r["reference_source"]),
             saving=-r["saving"] * 100,
+            diff=-r["difference"],
             end=html.escape(r["end"]),
         )
         for r in rows

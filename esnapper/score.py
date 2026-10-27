@@ -66,6 +66,26 @@ def saving(bid, shipping, reference):
     return 1 - (bid + (shipping or 0)) / reference
 
 
+def evaluate(bid, shipping, reference, search):
+    """Bewertet eine Auktion gegen den Referenzpreis.
+
+    Ein Treffer braucht beides: genug Abstand in Euro (lohnt sich der Aufwand?) und genug
+    Abstand in Prozent (Puffer, falls der Referenzpreis daneben liegt oder das Gebot noch steigt).
+    So fällt ein Auto mit 20.000 € Gebot bei 22.000 € Sofortkauf raus (2.000 €, aber nur 9 %),
+    ebenso ein Artikel für 50 € statt 100 € (50 %, aber nur 50 €).
+
+    Bewertung = Differenz × Ersparnis: bevorzugt Angebote, die in Euro viel bringen und dabei
+    viel Luft lassen. Dient zum Sortieren der Treffer.
+    """
+    s = saving(bid, shipping, reference)
+    if s is None:
+        return {"saving": None, "difference": None, "rating": None, "is_hit": False}
+    difference = reference - bid - (shipping or 0)
+    rating = max(difference, 0) * max(s, 0)
+    is_hit = difference >= search.get("min_difference", 0) and s >= search.get("min_saving", 0.3)
+    return {"saving": s, "difference": difference, "rating": rating, "is_hit": is_hit}
+
+
 def passes_filters(item, search):
     """Prüft alles, was ohne Zusatzabfrage geht. Gibt (ok, grund) zurück."""
     title = item.get("title", "").lower()

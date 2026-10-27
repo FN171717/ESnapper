@@ -41,7 +41,7 @@ def format_hits(hits):
         lines.append(
             f"\n*{h['title'][:80]}*\n"
             f"Gebot {h['bid']:.2f} € (+{h['shipping'] or 0:.2f} Versand), "
-            f"Vergleich {h['reference']:.2f} €, {h['saving'] * 100:.0f} % drunter\n"
+            f"Vergleich {h['reference']:.2f} €, {h['difference']:.0f} € bzw. {h['saving'] * 100:.0f} % drunter\n"
             f"Endet {h['ends_local']}\n{h['url']}"
         )
     return "\n".join(lines)

@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from . import score
+from . import geo, score
 from .ebay import EbayClient, end_window_filter
 from .notify import format_hits, send_notification
 from .render import render
@@ -53,6 +53,28 @@ def find_reference(client, item, search, delivery_country):
     return ref, f"Median aus {len(prices)} Sofortkäufen", len(prices)
 
 
+def make_locator(config):
+    """Nur laden, wenn eine Suche einen Umkreis nutzt. Fehlt die PLZ-Datei, läuft es ohne Umkreis weiter."""
+    if not config.get("home_postal_code") or not any(s.get("max_distance_km") for s in config["searches"]):
+        return None
+    try:
+        return geo.Locator(geo.load_postal_codes())
+    except Exception as exc:
+        print(f"Warnung: PLZ-Daten nicht verfügbar, Umkreisfilter aus ({exc})")
+        return None
+
+
+def too_far(item, search, config, locator):
+    """Umkreis gilt für Abhol-Suchen (pickup) immer, sonst nur für Artikel ohne Versand."""
+    limit = search.get("max_distance_km")
+    if not limit or locator is None:
+        return False
+    if not search.get("pickup") and score.shipping_cost(item) is not None:
+        return False
+    km = locator.distance_km(config["home_postal_code"], item.get("itemLocation", {}).get("postalCode"))
+    return km is not None and km > limit
+
+
 def run(config):
     missing = [v for v in ("EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET") if not os.environ.get(v, "").strip()]
     if missing:
@@ -66,6 +88,7 @@ def run(config):
     now = datetime.now(timezone.utc)
     budget = config.get("max_new_items_per_run", 25)
     rows, new_hits = [], []
+    locator = make_locator(config)
 
     for search in config["searches"]:
         filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now),
@@ -90,7 +113,7 @@ def run(config):
 
         for item in items:
             ok, _ = score.passes_filters(item, search)
-            if not ok:
+            if not ok or too_far(item, search, config, locator):
                 continue
             item_id = item["itemId"]
             entry = known.get(item_id)

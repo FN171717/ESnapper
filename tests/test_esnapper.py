@@ -166,3 +166,27 @@ def test_no_notification_shortly_before_end(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "EbayClient", lambda *a, **k: FakeClient([late], [], {}))
     app.run({"searches": [dict(SEARCH, compare="sofortkauf", min_difference=200, min_saving=0.9)]})
     assert sent == []
+
+
+def test_geo_distance_with_masked_postal_code(tmp_path):
+    from esnapper import geo
+    f = tmp_path / "DE.txt"
+    rows = [("25712", 54.08, 9.27), ("20095", 53.55, 10.00), ("20097", 53.55, 10.02), ("80331", 48.14, 11.57)]
+    f.write_text("\n".join(f"DE\t{c}\tOrt\t\t\t\t\t\t\t{lat}\t{lon}\t4" for c, lat, lon in rows))
+    loc = geo.Locator(geo.load_postal_codes(f))
+    assert 60 < loc.distance_km("25712", "200**") < 90       # Hamburg
+    assert 650 < loc.distance_km("25712", "80331") < 750     # München
+    assert loc.distance_km("25712", "") is None
+
+
+def test_too_far_only_for_pickup(monkeypatch):
+    class FakeLocator:
+        def distance_km(self, a, b):
+            return 700
+    cfg = {"home_postal_code": "25712"}
+    search = {"max_distance_km": 400}
+    shipped = auction(ship="10.00")
+    pickup_only = auction(ship=None)
+    assert app.too_far(shipped, search, cfg, FakeLocator()) is False
+    assert app.too_far(pickup_only, search, cfg, FakeLocator()) is True
+    assert app.too_far(shipped, dict(search, pickup=True), cfg, FakeLocator()) is True

@@ -1,6 +1,7 @@
 # ESnapper-Konfiguration. Jede Suche wird bei jedem Lauf abgefragt.
 marketplace: EBAY_DE
 delivery_country: DE
+home_postal_code: "25712"   # für den Umkreis bei Abholung (max_distance_km)
 
 # Wie viele neue Artikel pro Lauf höchstens mit Vergleichspreisen bewertet werden.
 # Hält den Verbrauch unter dem Tageslimit der eBay-API (5.000 Aufrufe). 96 Läufe × 25 ≈ 2.400 Vergleichssuchen pro Tag.
@@ -23,6 +24,7 @@ searches:
     min_price: 0              # aktuelles Gebot in EUR (0 = auch 1-€-Starts)
     max_price: 2000
     max_shipping: 50          # Versandkosten in EUR, leer = egal
+    max_distance_km: 400      # nur für Artikel ohne Versand (Abholung): Umkreis um home_postal_code
     conditions: []            # z. B. ["NEW", "USED"]; leer = alle
     exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion"]
     min_seller_feedback: 97   # Prozent positive Bewertungen
@@ -38,12 +40,14 @@ searches:
     min_price: 0
     max_price: 2000
     max_shipping: 50
+    max_distance_km: 400
     exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion"]
     min_seller_feedback: 97
 
   - name: Fahrzeuge
     category_ids: ["9800"]    # Auto & Motorrad: Fahrzeuge
     pickup: true              # meist nur Abholung: Standort Deutschland statt Lieferung nach Deutschland
+    max_distance_km: 400      # bei pickup für alle Artikel: Umkreis um home_postal_code
     ends_within_hours: 2
     min_minutes_left: 15
     compare: sofortkauf

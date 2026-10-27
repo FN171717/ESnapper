@@ -89,7 +89,7 @@ def test_full_run(tmp_path, monkeypatch):
     ]
     fake = FakeClient(auctions, comps, {"reserve": False})
     monkeypatch.setattr(app, "EbayClient", lambda *a, **k: fake)
-    config = {"searches": [SEARCH]}
+    config = {"searches": [dict(SEARCH, compare="vergleich")]}
 
     app.run(config)
     page = (tmp_path / "site" / "index.html").read_text()
@@ -136,3 +136,21 @@ def test_rating_prefers_big_and_safe_deals():
     big = score.evaluate(600, 0, 1000, search)["rating"]     # 400 € × 40 %
     thin = score.evaluate(9000, 0, 10000, search)["rating"]  # 1.000 € × 10 %
     assert big > thin
+
+
+def test_sofortkauf_mode_skips_auctions_without_bin(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EBAY_CLIENT_ID", "x")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "y")
+    sent = []
+    monkeypatch.setattr(app, "send_notification", sent.append)
+    auctions = [
+        auction("nobin", bid="30.00"),
+        auction("bin", bid="30.00", ship="15.00", options=("AUCTION", "FIXED_PRICE"), price="400.00"),
+    ]
+    fake = FakeClient(auctions, comps=[], reserve_met={})
+    monkeypatch.setattr(app, "EbayClient", lambda *a, **k: fake)
+    app.run({"searches": [dict(SEARCH, compare="sofortkauf", min_difference=200, min_saving=0.9)]})
+    assert len(sent) == 1 and "itm/bin" in sent[0] and "itm/nobin" not in sent[0]
+    assert "370 €" in sent[0]  # 400 − 30, Versand fällt beim selben Artikel raus
+    assert fake.calls == 2  # Auktionssuche + Mindestpreis-Prüfung, keine Vergleichssuche

@@ -73,8 +73,13 @@ def run(config):
         if search.get("conditions"):
             filters.append("conditions:{" + "|".join(search["conditions"]) + "}")
         items = client.search(keywords=search.get("keywords", ""), category_ids=search.get("category_ids", []),
-                              filters=filters, sort="endingSoonest", max_items=1000)
-        print(f"[{search['name']}] {len(items)} Auktionen im Zeitfenster")
+                              filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000))
+        # "sofortkauf": nur Auktionen mit Sofortkauf-Option, Gebot direkt gegen Sofortkaufpreis.
+        # "vergleich": zusätzlich Auktionen ohne Sofortkauf über Vergleichsangebote bewerten.
+        compare = search.get("compare", "sofortkauf")
+        if compare == "sofortkauf":
+            items = [i for i in items if score.buy_it_now_price(i)]
+        print(f"[{search['name']}] {len(items)} Auktionen im Zeitfenster (Vergleich: {compare})")
 
         for item in items:
             ok, _ = score.passes_filters(item, search)
@@ -82,6 +87,9 @@ def run(config):
                 continue
             item_id = item["itemId"]
             entry = known.get(item_id)
+            if entry is None and compare == "sofortkauf":
+                entry = known[item_id] = {"reference": score.buy_it_now_price(item), "reference_source": "Sofortkauf",
+                                          "end": item["itemEndDate"], "reserve_ok": None, "notified": False}
             if entry is None:
                 if budget <= 0:
                     continue
@@ -93,7 +101,9 @@ def run(config):
                 continue
 
             bid, ship = score.current_bid(item), score.shipping_cost(item)
-            result = score.evaluate(bid, ship, entry["reference"], search)
+            # Beim Sofortkaufpreis desselben Artikels fällt der Versand auf beiden Seiten an.
+            same_item = entry["reference_source"] == "Sofortkauf"
+            result = score.evaluate(bid, 0 if same_item else ship, entry["reference"], search)
             is_hit = result["is_hit"]
 
             # Mindestpreis nur bei Kandidaten prüfen, das spart API-Aufrufe.

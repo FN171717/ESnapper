@@ -11,6 +11,10 @@ searches:
     category_ids: ["12576"]   # eBay.de: Business & Industrie
     keywords: ""              # optional, z. B. "Festool" oder "Hilti"
     ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
+    # sofortkauf = nur Auktionen mit Sofortkauf-Option, Gebot gegen Sofortkaufpreis (schnell, robust)
+    # vergleich  = auch Auktionen ohne Sofortkauf, Preis aus ähnlichen Angeboten (langsamer, ungenauer)
+    compare: sofortkauf
+    max_auctions: 3000        # so viele bald endende Auktionen pro Lauf durchsehen
     # Treffer nur, wenn BEIDES erfüllt ist (Gebot + Versand gegen Vergleichspreis):
     min_difference: 200       # mindestens so viele Euro günstiger
     min_saving: 0.90          # und mindestens so viel Prozent günstiger (0.90 = Gebot höchstens 10 % des Vergleichspreises)

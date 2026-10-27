@@ -1,0 +1,27 @@
+# Hilfsworkflow: Kategorie-IDs für config.yaml nachschlagen (Ergebnis steht im Log).
+name: Kategorien suchen
+
+on:
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: "Suchbegriffe, durch Leerzeichen getrennt (z. B. Werkzeug Heimwerker)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m esnapper.categories $QUERIES
+        env:
+          QUERIES: ${{ inputs.queries }}
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}

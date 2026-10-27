@@ -1,0 +1,20 @@
+# ESnapper-Konfiguration. Jede Suche wird bei jedem Lauf abgefragt.
+marketplace: EBAY_DE
+delivery_country: DE
+
+# Wie viele neue Artikel pro Lauf höchstens mit Vergleichspreisen bewertet werden.
+# Hält den Verbrauch unter dem Tageslimit der eBay-API (5.000 Aufrufe). 96 Läufe × 25 ≈ 2.400 Vergleichssuchen pro Tag.
+max_new_items_per_run: 25
+
+searches:
+  - name: Business & Industrie
+    category_ids: ["12576"]   # eBay.de: Business & Industrie
+    keywords: ""              # optional, z. B. "Festool" oder "Hilti"
+    ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
+    min_saving: 0.30          # ab 30 % unter Vergleichspreis = Treffer
+    min_price: 20             # aktuelles Gebot in EUR
+    max_price: 2000
+    max_shipping: 50          # Versandkosten in EUR, leer = egal
+    conditions: []            # z. B. ["NEW", "USED"]; leer = alle
+    exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion"]
+    min_seller_feedback: 97   # Prozent positive Bewertungen

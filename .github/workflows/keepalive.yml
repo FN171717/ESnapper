@@ -1,0 +1,22 @@
+# GitHub pausiert zeitgesteuerte Workflows nach 60 Tagen ohne Repo-Aktivität.
+# Dieser Job schaltet beide Workflows einmal im Monat neu ein und setzt so die Frist zurück.
+name: Keepalive
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for wf in run.yml keepalive.yml; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/$wf/enable"
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}

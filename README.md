@@ -7,7 +7,7 @@ Findet eBay-Auktionen, die kurz vor Ende deutlich unter ihrem Vergleichspreis st
 Alle 15 Minuten startet GitHub Actions einen Lauf:
 
 1. Über die offizielle eBay Browse API werden die Auktionen jeder Suche aus `config.yaml` abgefragt, die im eingestellten Zeitfenster enden.
-2. Filter: Preisspanne, Versandkosten, Zustand, Ausschlusswörter, Verkäuferbewertung.
+2. Filter: Preisspanne, Versandkosten, Zustand, Ausschlusswörter, Verkäuferbewertung, Restzeit für die Meldung (`min_minutes_left`) und Umkreis um `home_postal_code` bei Abholung (`max_distance_km`, PLZ-Daten von GeoNames, CC BY 4.0).
 3. Referenzpreis, je nach `compare` in der Suche:
    - `sofortkauf` (Standard): nur Auktionen mit Sofortkauf-Option, das Gebot wird direkt mit dem Sofortkaufpreis desselben Artikels verglichen (Versand zählt auf beiden Seiten gleich und fällt raus). Keine Zusatzabfragen.
    - `vergleich`: auch Auktionen ohne Sofortkauf; der Referenzpreis ist der Median vergleichbarer Sofortkauf-Angebote (Suche mit den Kernbegriffen des Titels, gleiche Kategorie, gleicher Zustand). Begrenzt durch `max_new_items_per_run`.
@@ -46,5 +46,5 @@ EBAY_CLIENT_ID=... EBAY_CLIENT_SECRET=... python -m esnapper   # schreibt site/i
 ## Grenzen
 
 - Der Vergleichspreis ist eine Näherung: Sofortkauf-Angebote sind meist teurer als echte Endpreise, und die Titelsuche trifft nicht immer genau dasselbe Produkt. Echte Verkaufspreise gibt eBay nur über die Marketplace Insights API frei, und die nur auf Antrag.
-- Die eBay-API erlaubt 5.000 Aufrufe pro Tag. `max_new_items_per_run` begrenzt die Vergleichssuchen pro Lauf.
+- Die eBay-API erlaubt 5.000 Aufrufe pro Tag. Pro Kategorie kostet jeder Lauf etwa `max_auctions` / 200 Aufrufe; bei 96 Läufen am Tag muss die Summe darunter bleiben. Die Browse API nimmt nur eine Kategorie pro Abfrage.
 - GitHub startet geplante Läufe teils einige Minuten verspätet.

@@ -13,12 +13,12 @@ searches:
   - name: Business & Industrie
     category_ids: ["12576"]
     keywords: ""              # optional, z. B. "Festool" oder "Hilti"
-    ends_within_hours: 2      # nur Auktionen, die in dieser Zeit enden (2 h reicht beim 15-Min-Takt und schont das API-Limit)
+    ends_within_hours: 1      # nur Auktionen, die in dieser Zeit enden (1 h reicht beim 15-Min-Takt und schont das API-Limit)
     min_minutes_left: 15      # Meldung nur, wenn noch mindestens so viele Minuten bleiben
     # sofortkauf = nur Auktionen mit Sofortkauf-Option, Gebot gegen Sofortkaufpreis (schnell, robust)
     # vergleich  = auch Auktionen ohne Sofortkauf, Preis aus ähnlichen Angeboten (langsamer, ungenauer)
     compare: sofortkauf
-    max_auctions: 3000        # so viele bald endende Auktionen pro Lauf durchsehen
+    max_auctions: 1500        # so viele bald endende Auktionen je Kategorie und Lauf durchsehen (200 pro API-Aufruf)
     min_difference: 200       # mindestens so viele Euro günstiger
     min_saving: 0.90          # und mindestens so viel Prozent günstiger (0.90 = Gebot höchstens 10 % des Sofortkaufpreises)
     min_price: 0              # aktuelles Gebot in EUR (0 = auch 1-€-Starts)
@@ -31,10 +31,10 @@ searches:
 
   - name: Heimwerker & Werkzeug
     category_ids: ["3187", "34998"]   # Heimwerker (inkl. Werkzeuge), Auto & Motorrad: Teile > Werkzeuge
-    ends_within_hours: 2
+    ends_within_hours: 1
     min_minutes_left: 15
     compare: sofortkauf
-    max_auctions: 3000
+    max_auctions: 1500
     min_difference: 200
     min_saving: 0.90
     min_price: 0
@@ -48,10 +48,10 @@ searches:
     category_ids: ["9800"]    # Auto & Motorrad: Fahrzeuge
     pickup: true              # meist nur Abholung: Standort Deutschland statt Lieferung nach Deutschland
     max_distance_km: 400      # bei pickup für alle Artikel: Umkreis um home_postal_code
-    ends_within_hours: 2
+    ends_within_hours: 1
     min_minutes_left: 15
     compare: sofortkauf
-    max_auctions: 3000
+    max_auctions: 1500
     min_difference: 200
     min_saving: 0.90
     min_price: 0

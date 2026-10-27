@@ -11,6 +11,7 @@ searches:
     category_ids: ["12576"]   # eBay.de: Business & Industrie
     keywords: ""              # optional, z. B. "Festool" oder "Hilti"
     ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
+    min_minutes_left: 15      # Meldung nur, wenn noch mindestens so viele Minuten bleiben
     # sofortkauf = nur Auktionen mit Sofortkauf-Option, Gebot gegen Sofortkaufpreis (schnell, robust)
     # vergleich  = auch Auktionen ohne Sofortkauf, Preis aus ähnlichen Angeboten (langsamer, ungenauer)
     compare: sofortkauf

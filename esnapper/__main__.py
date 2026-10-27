@@ -122,7 +122,9 @@ def run(config):
                 "ends_local": parse_time(item["itemEndDate"]).astimezone(LOCAL_TZ).strftime("%d.%m. %H:%M"),
             }
             rows.append(row)
-            if is_hit and not entry["notified"]:
+            # Zu knapp vor Ende lohnt keine Meldung mehr, man schafft das Bieten nicht.
+            minutes_left = (parse_time(item["itemEndDate"]) - now).total_seconds() / 60
+            if is_hit and not entry["notified"] and minutes_left >= search.get("min_minutes_left", 15):
                 new_hits.append(row)
                 entry["notified"] = True
 

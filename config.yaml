@@ -13,7 +13,7 @@ searches:
     ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
     # Treffer nur, wenn BEIDES erfüllt ist (Gebot + Versand gegen Vergleichspreis):
     min_difference: 200       # mindestens so viele Euro günstiger
-    min_saving: 0.25          # und mindestens so viel Prozent günstiger
+    min_saving: 0.90          # und mindestens so viel Prozent günstiger (0.90 = Gebot höchstens 10 % des Vergleichspreises)
     min_price: 20             # aktuelles Gebot in EUR
     max_price: 2000
     max_shipping: 50          # Versandkosten in EUR, leer = egal

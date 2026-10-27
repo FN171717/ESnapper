@@ -54,6 +54,10 @@ def find_reference(client, item, search, delivery_country):
 
 
 def run(config):
+    missing = [v for v in ("EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET") if not os.environ.get(v, "").strip()]
+    if missing:
+        raise RuntimeError(f"Secret fehlt oder ist leer: {', '.join(missing)}. "
+                           "Anlegen unter Settings → Secrets and variables → Actions → Repository secrets.")
     client = EbayClient(os.environ["EBAY_CLIENT_ID"], os.environ["EBAY_CLIENT_SECRET"],
                         config.get("marketplace", "EBAY_DE"))
     country = config.get("delivery_country", "DE")

@@ -11,7 +11,7 @@ import yaml
 
 from . import score
 from .ebay import EbayClient, end_window_filter
-from .notify import format_hits, send_whatsapp
+from .notify import format_hits, send_notification
 from .render import render
 
 STATE_FILE = Path("data/state.json")
@@ -112,7 +112,7 @@ def run(config):
                 entry["notified"] = True
 
     if new_hits:
-        send_whatsapp(format_hits(new_hits))
+        send_notification(format_hits(new_hits))
 
     # Beendete Auktionen vergessen.
     state["items"] = {k: v for k, v in known.items() if parse_time(v["end"]) > now - timedelta(hours=1)}
@@ -129,7 +129,7 @@ def alert_error(exc_text):
     if last and now - parse_time(last) < ERROR_ALERT_EVERY:
         return
     try:
-        send_whatsapp("⚠️ ESnapper-Lauf fehlgeschlagen:\n" + exc_text[-800:])
+        send_notification("⚠️ ESnapper-Lauf fehlgeschlagen:\n" + exc_text[-800:])
         state["last_error_alert"] = now.isoformat()
         save_state(state)
     except Exception:

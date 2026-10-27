@@ -79,7 +79,7 @@ def test_full_run(tmp_path, monkeypatch):
     monkeypatch.setenv("EBAY_CLIENT_ID", "x")
     monkeypatch.setenv("EBAY_CLIENT_SECRET", "y")
     sent = []
-    monkeypatch.setattr(app, "send_whatsapp", sent.append)
+    monkeypatch.setattr(app, "send_notification", sent.append)
     comps = [{"price": {"value": v}, "shippingOptions": []} for v in ("300", "320", "340", "360")]
     auctions = [
         auction("cheap", bid="100.00"),                      # 110 vs 330 -> Treffer
@@ -104,3 +104,17 @@ def test_full_run(tmp_path, monkeypatch):
     app.run(config)
     assert sent == []
     assert fake.calls - calls_before == 2  # Auktionssuche + erneute Mindestpreis-Prüfung
+
+
+def test_notification_channels(monkeypatch):
+    from esnapper import notify
+    calls = []
+    monkeypatch.setattr(notify, "send_ntfy", lambda topic, text: calls.append(("ntfy", topic)))
+    monkeypatch.setattr(notify, "send_whatsapp", lambda phone, key, text: calls.append(("wa", phone)))
+    for var in ("NTFY_TOPIC", "CALLMEBOT_PHONE", "CALLMEBOT_APIKEY"):
+        monkeypatch.delenv(var, raising=False)
+    assert notify.send_notification("x") is False
+
+    monkeypatch.setenv("NTFY_TOPIC", "esnapper-test")
+    assert notify.send_notification("x") is True
+    assert calls == [("ntfy", "esnapper-test")]

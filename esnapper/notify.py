@@ -1,4 +1,4 @@
-"""WhatsApp-Benachrichtigung über CallMeBot (https://www.callmebot.com)."""
+"""Benachrichtigung per ntfy-Push (https://ntfy.sh) und/oder WhatsApp über CallMeBot."""
 import os
 
 import requests
@@ -6,19 +6,33 @@ import requests
 MAX_LEN = 3500  # CallMeBot schneidet sehr lange Nachrichten ab
 
 
-def send_whatsapp(text):
-    phone = os.environ.get("CALLMEBOT_PHONE")
-    apikey = os.environ.get("CALLMEBOT_APIKEY")
-    if not phone or not apikey:
-        print("Keine CallMeBot-Daten gesetzt, Nachricht nur im Log:\n" + text)
-        return False
+def send_notification(text):
+    """Schickt über jeden eingerichteten Kanal. Ohne Kanal landet die Nachricht nur im Log."""
+    sent = False
+    if os.environ.get("NTFY_TOPIC"):
+        send_ntfy(os.environ["NTFY_TOPIC"], text)
+        sent = True
+    if os.environ.get("CALLMEBOT_PHONE") and os.environ.get("CALLMEBOT_APIKEY"):
+        send_whatsapp(os.environ["CALLMEBOT_PHONE"], os.environ["CALLMEBOT_APIKEY"], text)
+        sent = True
+    if not sent:
+        print("Kein Benachrichtigungskanal eingerichtet, Nachricht nur im Log:\n" + text)
+    return sent
+
+
+def send_ntfy(topic, text):
+    r = requests.post(f"https://ntfy.sh/{topic}", data=text.encode("utf-8"),
+                      headers={"Title": "ESnapper", "Tags": "moneybag"}, timeout=30)
+    r.raise_for_status()
+
+
+def send_whatsapp(phone, apikey, text):
     r = requests.get(
         "https://api.callmebot.com/whatsapp.php",
         params={"phone": phone, "text": text[:MAX_LEN], "apikey": apikey},
         timeout=30,
     )
     r.raise_for_status()
-    return True
 
 
 def format_hits(hits):

@@ -69,7 +69,8 @@ def run(config):
 
     for search in config["searches"]:
         filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now),
-                   f"deliveryCountry:{country}"]
+                   # Fahrzeuge werden meist nur abgeholt, dort zählt der Standort statt der Lieferung.
+                   f"itemLocationCountry:{country}" if search.get("pickup") else f"deliveryCountry:{country}"]
         if search.get("conditions"):
             filters.append("conditions:{" + "|".join(search["conditions"]) + "}")
         items = client.search(keywords=search.get("keywords", ""), category_ids=search.get("category_ids", []),

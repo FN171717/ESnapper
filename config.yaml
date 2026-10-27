@@ -7,8 +7,10 @@ delivery_country: DE
 max_new_items_per_run: 25
 
 searches:
+  # Alle Suchen: nur Auktionen mit Sofortkauf-Option, Gebot gegen Sofortkaufpreis.
+  # Treffer nur, wenn BEIDES erfüllt ist: mindestens min_difference Euro UND mindestens min_saving günstiger.
   - name: Business & Industrie
-    category_ids: ["12576"]   # eBay.de: Business & Industrie
+    category_ids: ["12576"]
     keywords: ""              # optional, z. B. "Festool" oder "Hilti"
     ends_within_hours: 6      # nur Auktionen, die in dieser Zeit enden
     min_minutes_left: 15      # Meldung nur, wenn noch mindestens so viele Minuten bleiben
@@ -16,12 +18,39 @@ searches:
     # vergleich  = auch Auktionen ohne Sofortkauf, Preis aus ähnlichen Angeboten (langsamer, ungenauer)
     compare: sofortkauf
     max_auctions: 3000        # so viele bald endende Auktionen pro Lauf durchsehen
-    # Treffer nur, wenn BEIDES erfüllt ist (Gebot + Versand gegen Vergleichspreis):
     min_difference: 200       # mindestens so viele Euro günstiger
-    min_saving: 0.90          # und mindestens so viel Prozent günstiger (0.90 = Gebot höchstens 10 % des Vergleichspreises)
-    min_price: 20             # aktuelles Gebot in EUR
+    min_saving: 0.90          # und mindestens so viel Prozent günstiger (0.90 = Gebot höchstens 10 % des Sofortkaufpreises)
+    min_price: 0              # aktuelles Gebot in EUR (0 = auch 1-€-Starts)
     max_price: 2000
     max_shipping: 50          # Versandkosten in EUR, leer = egal
     conditions: []            # z. B. ["NEW", "USED"]; leer = alle
     exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion"]
     min_seller_feedback: 97   # Prozent positive Bewertungen
+
+  - name: Heimwerker & Werkzeug
+    category_ids: ["3187", "34998"]   # Heimwerker (inkl. Werkzeuge), Auto & Motorrad: Teile > Werkzeuge
+    ends_within_hours: 6
+    min_minutes_left: 15
+    compare: sofortkauf
+    max_auctions: 3000
+    min_difference: 200
+    min_saving: 0.90
+    min_price: 0
+    max_price: 2000
+    max_shipping: 50
+    exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion"]
+    min_seller_feedback: 97
+
+  - name: Fahrzeuge
+    category_ids: ["9800"]    # Auto & Motorrad: Fahrzeuge
+    pickup: true              # meist nur Abholung: Standort Deutschland statt Lieferung nach Deutschland
+    ends_within_hours: 6
+    min_minutes_left: 15
+    compare: sofortkauf
+    max_auctions: 3000
+    min_difference: 200
+    min_saving: 0.90
+    min_price: 0
+    max_price: 100000
+    exclude_words: ["defekt", "motorschaden", "getriebeschaden", "unfall", "export", "bastler", "ersatzteil"]
+    min_seller_feedback: 95

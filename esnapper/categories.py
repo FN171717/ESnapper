@@ -1,6 +1,7 @@
 """Sucht Kategorie-IDs im eBay-Kategoriebaum.
 
 Aufruf: python -m esnapper.categories Werkzeug Heimwerker Fahrzeuge
+Ohne Suchbegriffe werden alle Hauptkategorien aufgelistet.
 """
 import os
 import sys
@@ -22,6 +23,11 @@ def main(queries, max_depth=3):
                           {"marketplace_id": client.marketplace})["categoryTreeId"]
     tree = client._get(f"/commerce/taxonomy/v1/category_tree/{tree_id}")
     nodes = list(walk(tree["rootCategoryNode"]))
+    if not queries:
+        for depth, cat_id, path in nodes:
+            if depth == 1:
+                print(f"{cat_id:>8}  {path[-1]}")
+        return
     for q in queries:
         print(f"\n== {q} ==")
         for depth, cat_id, path in nodes:

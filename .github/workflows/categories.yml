@@ -5,8 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       queries:
-        description: "Suchbegriffe, durch Leerzeichen getrennt (z. B. Werkzeug Heimwerker)"
-        required: true
+        description: "Suchbegriffe, durch Leerzeichen getrennt (z. B. Werkzeug Heimwerker); leer = alle Hauptkategorien"
+        required: false
+        default: ""
 
 permissions:
   contents: read

@@ -90,7 +90,13 @@ def run(config):
     rows, new_hits = [], []
     locator = make_locator(config)
 
+    run_count = state.get("run_count", 0) + 1
+    state["run_count"] = run_count
     for search in config["searches"]:
+        # Große Suchen nur bei jedem n-ten Lauf, damit das eBay-Tageslimit reicht.
+        if run_count % search.get("every_nth_run", 1):
+            print(f"[{search['name']}] ausgelassen (nur jeder {search['every_nth_run']}. Lauf)")
+            continue
         filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now),
                    # Fahrzeuge werden meist nur abgeholt, dort zählt der Standort statt der Lieferung.
                    f"itemLocationCountry:{country}" if search.get("pickup") else f"deliveryCountry:{country}"]

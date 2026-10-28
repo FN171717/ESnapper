@@ -203,3 +203,17 @@ def test_search_drops_items_outside_window_and_stops_paging():
     client._get = lambda path, params: pages[params["offset"] // 2] if params["offset"] < 3 else {}
     got = client.search(category_ids=["1"], sort="endingSoonest", limit=2, ends_before="2026-10-28T09:00:00Z")
     assert [i["itemId"] for i in got] == ["a", "b"]
+
+
+def test_every_nth_run_skips_search(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EBAY_CLIENT_ID", "x")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "y")
+    monkeypatch.setattr(app, "send_notification", lambda text: None)
+    fake = FakeClient([], [], {})
+    monkeypatch.setattr(app, "EbayClient", lambda *a, **k: fake)
+    config = {"searches": [dict(SEARCH, every_nth_run=2)]}
+    app.run(config)
+    assert fake.calls == 0      # 1. Lauf: ausgelassen
+    app.run(config)
+    assert fake.calls == 1      # 2. Lauf: gesucht

@@ -48,8 +48,13 @@ class EbayClient:
             raise RuntimeError(f"eBay-Fehler {r.status_code} bei {path} {params}: {r.text[:500]}")
         return r.json()
 
-    def search(self, *, keywords="", category_ids=(), filters=(), sort=None, limit=200, max_items=1000):
-        """Liefert itemSummaries, blättert bis max_items."""
+    def search(self, *, keywords="", category_ids=(), filters=(), sort=None, limit=200, max_items=1000,
+               ends_before=None):
+        """Liefert itemSummaries, blättert bis max_items.
+
+        Mit ends_before (ISO-Zeit) werden nur Artikel geliefert, die bis dahin enden. Bei
+        sort=endingSoonest hört das Blättern auf, sobald eine Seite darüber hinausgeht.
+        """
         params = {"limit": min(limit, 200), "filter": ",".join(filters)}
         if keywords:
             params["q"] = keywords
@@ -62,8 +67,14 @@ class EbayClient:
             params["offset"] = offset
             page = self._get("/buy/browse/v1/item_summary/search", params)
             batch = page.get("itemSummaries", [])
-            items.extend(batch)
             offset += len(batch)
+            if ends_before:
+                in_window = [i for i in batch if i.get("itemEndDate", "") <= ends_before]
+                items.extend(in_window)
+                if sort == "endingSoonest" and len(in_window) < len(batch):
+                    break
+            else:
+                items.extend(batch)
             if not batch or offset >= page.get("total", 0):
                 break
         return items[:max_items]

@@ -190,3 +190,16 @@ def test_too_far_only_for_pickup(monkeypatch):
     assert app.too_far(shipped, search, cfg, FakeLocator()) is False
     assert app.too_far(pickup_only, search, cfg, FakeLocator()) is True
     assert app.too_far(shipped, dict(search, pickup=True), cfg, FakeLocator()) is True
+
+
+def test_search_drops_items_outside_window_and_stops_paging():
+    from esnapper.ebay import EbayClient
+    pages = [
+        {"total": 600, "itemSummaries": [{"itemId": "a", "itemEndDate": "2026-10-28T08:10:00.000Z"},
+                                         {"itemId": "b", "itemEndDate": "2026-10-28T08:50:00.000Z"}]},
+        {"total": 600, "itemSummaries": [{"itemId": "c", "itemEndDate": "2026-10-31T08:00:00.000Z"}]},
+    ]
+    client = EbayClient("x", "y")
+    client._get = lambda path, params: pages[params["offset"] // 2] if params["offset"] < 3 else {}
+    got = client.search(category_ids=["1"], sort="endingSoonest", limit=2, ends_before="2026-10-28T09:00:00Z")
+    assert [i["itemId"] for i in got] == ["a", "b"]

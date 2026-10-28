@@ -97,10 +97,17 @@ def run(config):
         if search.get("conditions"):
             filters.append("conditions:{" + "|".join(search["conditions"]) + "}")
         # Die Browse API nimmt nur eine Kategorie pro Suche, daher je Kategorie einzeln abfragen.
+        # Das Zeitfenster prüfen wir zusätzlich selbst: eBay hat den itemEndDate-Filter nicht
+        # zuverlässig angewendet (eine Auktion mit 3 Tagen Restzeit kam durch).
+        ends_before = (now + timedelta(hours=search.get("ends_within_hours", 6))).strftime("%Y-%m-%dT%H:%M:%SZ")
         items, seen_ids = [], set()
         for cat_id in search.get("category_ids") or [None]:
-            for i in client.search(keywords=search.get("keywords", ""), category_ids=[cat_id] if cat_id else [],
-                                   filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000)):
+            calls_before = client.calls
+            found = client.search(keywords=search.get("keywords", ""), category_ids=[cat_id] if cat_id else [],
+                                  filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000),
+                                  ends_before=ends_before)
+            print(f"  Kategorie {cat_id}: {len(found)} Auktionen bis {ends_before}, {client.calls - calls_before} Aufrufe")
+            for i in found:
                 if i["itemId"] not in seen_ids:
                     seen_ids.add(i["itemId"])
                     items.append(i)

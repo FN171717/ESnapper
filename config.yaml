@@ -58,3 +58,22 @@ searches:
     max_price: 100000
     exclude_words: ["defekt", "motorschaden", "getriebeschaden", "unfall", "export", "bastler", "ersatzteil"]
     min_seller_feedback: 95
+
+  - name: Alle übrigen Kategorien
+    # Alle eBay.de-Hauptkategorien außer den oben eigens gesuchten (12576, 3187, 9800).
+    # Liste mit dem Workflow "Kategorien suchen" (ohne Suchbegriff) abrufbar.
+    category_ids: ["1", "99", "220", "260", "267", "281", "293", "353", "619", "625", "888", "1249",
+                   "1281", "1305", "2984", "3252", "9815", "10542", "11116", "11232", "11233", "11450",
+                   "11700", "14308", "14339", "15032", "20710", "22128", "26395", "58058", "131090", "159912"]
+    ends_within_hours: 1
+    min_minutes_left: 15
+    compare: sofortkauf
+    max_auctions: 1000
+    min_difference: 200
+    min_saving: 0.75
+    min_price: 0
+    max_price: 5000
+    max_shipping: 50
+    max_distance_km: 400
+    exclude_words: ["defekt", "ersatzteil", "bastler", "ohne funktion", "leerkarton", "nur ovp", "attrappe"]
+    min_seller_feedback: 97

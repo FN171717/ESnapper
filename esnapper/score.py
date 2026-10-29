@@ -111,3 +111,9 @@ def passes_filters(item, search):
         if fb is not None and float(fb) < min_fb:
             return False, "Verkäuferbewertung zu niedrig"
     return True, ""
+
+
+def wrong_country(item, country):
+    """True, wenn der Artikel nachweislich nicht in country steht (eBay wendet Filter nicht immer an)."""
+    found = item.get("itemLocation", {}).get("country")
+    return bool(country and found and found != country)

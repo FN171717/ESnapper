@@ -83,6 +83,8 @@ def run(config):
     client = EbayClient(os.environ["EBAY_CLIENT_ID"], os.environ["EBAY_CLIENT_SECRET"],
                         config.get("marketplace", "EBAY_DE"))
     country = config.get("delivery_country", "DE")
+    # Nur Artikel mit Standort in diesem Land (leer = auch Ausland, das nach DE liefert).
+    location = config.get("location_country")
     state = load_state()
     known = state["items"]
     now = datetime.now(timezone.utc)
@@ -97,9 +99,12 @@ def run(config):
         if run_count % search.get("every_nth_run", 1):
             print(f"[{search['name']}] ausgelassen (nur jeder {search['every_nth_run']}. Lauf)")
             continue
-        filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now),
-                   # Fahrzeuge werden meist nur abgeholt, dort zählt der Standort statt der Lieferung.
-                   f"itemLocationCountry:{country}" if search.get("pickup") else f"deliveryCountry:{country}"]
+        filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now)]
+        # Fahrzeuge werden meist nur abgeholt, dort zählt der Standort statt der Lieferung.
+        if not search.get("pickup"):
+            filters.append(f"deliveryCountry:{country}")
+        if location or search.get("pickup"):
+            filters.append(f"itemLocationCountry:{location or country}")
         if search.get("conditions"):
             filters.append("conditions:{" + "|".join(search["conditions"]) + "}")
         # Die Browse API nimmt nur eine Kategorie pro Suche, daher je Kategorie einzeln abfragen.
@@ -126,7 +131,7 @@ def run(config):
 
         for item in items:
             ok, _ = score.passes_filters(item, search)
-            if not ok or too_far(item, search, config, locator):
+            if not ok or too_far(item, search, config, locator) or score.wrong_country(item, location):
                 continue
             item_id = item["itemId"]
             entry = known.get(item_id)

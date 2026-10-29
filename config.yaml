@@ -1,6 +1,7 @@
 # ESnapper-Konfiguration. Jede Suche wird bei jedem Lauf abgefragt.
 marketplace: EBAY_DE
 delivery_country: DE
+location_country: DE        # nur Artikel aus Deutschland (Ausland: Zoll, lange Lieferzeit, teurer Versand); leer = auch Ausland
 home_postal_code: "25712"   # für den Umkreis bei Abholung (max_distance_km)
 
 # Wie viele neue Artikel pro Lauf höchstens mit Vergleichspreisen bewertet werden.

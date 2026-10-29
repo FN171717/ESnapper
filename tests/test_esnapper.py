@@ -217,3 +217,10 @@ def test_every_nth_run_skips_search(tmp_path, monkeypatch):
     assert fake.calls == 0      # 1. Lauf: ausgelassen
     app.run(config)
     assert fake.calls == 1      # 2. Lauf: gesucht
+
+
+def test_wrong_country():
+    assert score.wrong_country({"itemLocation": {"country": "CN"}}, "DE") is True
+    assert score.wrong_country({"itemLocation": {"country": "DE"}}, "DE") is False
+    assert score.wrong_country({}, "DE") is False          # unbekannt: durchlassen
+    assert score.wrong_country({"itemLocation": {"country": "CN"}}, None) is False

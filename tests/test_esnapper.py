@@ -224,3 +224,39 @@ def test_wrong_country():
     assert score.wrong_country({"itemLocation": {"country": "DE"}}, "DE") is False
     assert score.wrong_country({}, "DE") is False          # unbekannt: durchlassen
     assert score.wrong_country({"itemLocation": {"country": "CN"}}, None) is False
+
+
+def test_search_lower_bound_when_ebay_ignores_date_filter():
+    """Ignoriert eBay den Zeitfilter, wird trotzdem weitergeblättert, bis das Fenster erreicht ist."""
+    from esnapper.ebay import EbayClient
+    pages = [
+        {"total": 6, "itemSummaries": [{"itemId": "a", "itemEndDate": "2026-10-28T07:10:00.000Z"},
+                                       {"itemId": "b", "itemEndDate": "2026-10-28T07:50:00.000Z"}]},
+        {"total": 6, "itemSummaries": [{"itemId": "c", "itemEndDate": "2026-10-28T08:30:00.000Z"},
+                                       {"itemId": "d", "itemEndDate": "2026-10-28T09:30:00.000Z"}]},
+        {"total": 6, "itemSummaries": [{"itemId": "e", "itemEndDate": "2026-10-28T10:30:00.000Z"},
+                                       {"itemId": "f", "itemEndDate": "2026-10-28T11:30:00.000Z"}]},
+    ]
+    client = EbayClient("x", "y")
+    client._get = lambda path, params: pages[params["offset"] // 2]
+    got = client.search(category_ids=["1"], sort="endingSoonest", limit=2,
+                        ends_after="2026-10-28T08:00:00Z", ends_before="2026-10-28T10:00:00Z")
+    assert [i["itemId"] for i in got] == ["c", "d"]
+
+
+def test_domains_excluded_globally():
+    cfg = {"exclude_categories": ["domain"], "exclude_title_patterns": [r"\bdomains?\b", r"\bwebseiten?\b"]}
+    by_cat = dict(auction(title="kfz-teile24.de"), categories=[{"categoryName": "Internet-Domains"}])
+    assert score.excluded_globally(by_cat, cfg)
+    assert score.excluded_globally(auction(title="Premium Domain autoteile.de"), cfg)
+    assert score.excluded_globally(auction(title="Fertige Webseite mit Shop"), cfg)
+    assert not score.excluded_globally(auction(title="Domaine de la Romanée Rotwein"), cfg)
+    assert not score.excluded_globally(auction(), cfg)
+
+
+def test_budget_pacing_skips_search(tmp_path, monkeypatch):
+    now = datetime(2026, 11, 11, 8, 0, tzinfo=timezone.utc)  # 0 Uhr in Kalifornien -> 1/24 erlaubt
+    state = {"api_calls_today": 150}
+    assert app.budget_allows(state, 30, 4800, now)        # 180 <= 200
+    assert not app.budget_allows(state, 60, 4800, now)    # 210 > 200
+    assert app.budget_allows(state, 10_000, None, now)    # kein Limit gesetzt

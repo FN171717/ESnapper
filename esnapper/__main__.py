@@ -16,6 +16,8 @@ from .render import render
 
 STATE_FILE = Path("data/state.json")
 LOCAL_TZ = ZoneInfo("Europe/Berlin")
+# eBay setzt das Tageslimit der API um Mitternacht US-Westküstenzeit zurück.
+EBAY_TZ = ZoneInfo("America/Los_Angeles")
 ERROR_ALERT_EVERY = timedelta(hours=6)
 
 
@@ -75,6 +77,15 @@ def too_far(item, search, config, locator):
     return km is not None and km > limit
 
 
+def budget_allows(state, cost, limit, now):
+    """Tagesbudget gleichmäßig verteilen: bis zur Stunde h des eBay-Tages dürfen (h+1)/24 verbraucht sein."""
+    if not limit:
+        return True
+    local = now.astimezone(EBAY_TZ)
+    allowed = limit * min(1.0, (local.hour + local.minute / 60 + 1) / 24)
+    return state["api_calls_today"] + cost <= allowed
+
+
 def run(config):
     missing = [v for v in ("EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET") if not os.environ.get(v, "").strip()]
     if missing:
@@ -94,12 +105,24 @@ def run(config):
 
     run_count = state.get("run_count", 0) + 1
     state["run_count"] = run_count
+    # API-Verbrauch je eBay-Tag mitzählen, damit das Tageslimit nicht reißt.
+    ebay_day = now.astimezone(EBAY_TZ).date().isoformat()
+    if state.get("api_day") != ebay_day:
+        state["api_day"], state["api_calls_today"] = ebay_day, 0
+    costs = state.setdefault("search_costs", {})
     for search in config["searches"]:
         # Große Suchen nur bei jedem n-ten Lauf, damit das eBay-Tageslimit reicht.
         if run_count % search.get("every_nth_run", 1):
             print(f"[{search['name']}] ausgelassen (nur jeder {search['every_nth_run']}. Lauf)")
             continue
-        filters = ["buyingOptions:{AUCTION}", end_window_filter(search.get("ends_within_hours", 6), now)]
+        if not budget_allows(state, costs.get(search["name"], 0), config.get("daily_api_limit"), now):
+            print(f"[{search['name']}] ausgelassen (Tagesbudget: {state['api_calls_today']} Aufrufe verbraucht)")
+            continue
+        calls_at_start = client.calls
+        # Auktionen, die vor der Mindest-Restzeit enden, braucht es nicht: zum Bieten bleibt zu wenig Zeit.
+        min_hours_left = search.get("min_minutes_left", 15) / 60
+        filters = ["buyingOptions:{AUCTION}",
+                   end_window_filter(search.get("ends_within_hours", 6), now, from_hours=min_hours_left)]
         # Fahrzeuge werden meist nur abgeholt, dort zählt der Standort statt der Lieferung.
         if not search.get("pickup"):
             filters.append(f"deliveryCountry:{country}")
@@ -110,14 +133,17 @@ def run(config):
         # Die Browse API nimmt nur eine Kategorie pro Suche, daher je Kategorie einzeln abfragen.
         # Das Zeitfenster prüfen wir zusätzlich selbst: eBay hat den itemEndDate-Filter nicht
         # zuverlässig angewendet (eine Auktion mit 3 Tagen Restzeit kam durch).
-        ends_before = (now + timedelta(hours=search.get("ends_within_hours", 6))).strftime("%Y-%m-%dT%H:%M:%SZ")
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        ends_before = (now + timedelta(hours=search.get("ends_within_hours", 6))).strftime(fmt)
+        ends_after = (now + timedelta(hours=min_hours_left)).strftime(fmt)
         items, seen_ids = [], set()
         for cat_id in search.get("category_ids") or [None]:
             calls_before = client.calls
             found = client.search(keywords=search.get("keywords", ""), category_ids=[cat_id] if cat_id else [],
                                   filters=filters, sort="endingSoonest", max_items=search.get("max_auctions", 3000),
-                                  ends_before=ends_before)
-            print(f"  Kategorie {cat_id}: {len(found)} Auktionen bis {ends_before}, {client.calls - calls_before} Aufrufe")
+                                  ends_before=ends_before, ends_after=ends_after)
+            print(f"  Kategorie {cat_id}: {len(found)} Auktionen {ends_after} bis {ends_before}, "
+                  f"{client.calls - calls_before} Aufrufe")
             for i in found:
                 if i["itemId"] not in seen_ids:
                     seen_ids.add(i["itemId"])
@@ -131,7 +157,8 @@ def run(config):
 
         for item in items:
             ok, _ = score.passes_filters(item, search)
-            if not ok or too_far(item, search, config, locator) or score.wrong_country(item, location):
+            if (not ok or too_far(item, search, config, locator) or score.wrong_country(item, location)
+                    or score.excluded_globally(item, config)):
                 continue
             item_id = item["itemId"]
             entry = known.get(item_id)
@@ -175,6 +202,9 @@ def run(config):
             if is_hit and not entry["notified"] and minutes_left >= search.get("min_minutes_left", 15):
                 new_hits.append(row)
                 entry["notified"] = True
+
+        costs[search["name"]] = client.calls - calls_at_start
+        state["api_calls_today"] += client.calls - calls_at_start
 
     if new_hits:
         new_hits.sort(key=lambda h: h["rating"], reverse=True)

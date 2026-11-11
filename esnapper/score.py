@@ -117,3 +117,16 @@ def wrong_country(item, country):
     """True, wenn der Artikel nachweislich nicht in country steht (eBay wendet Filter nicht immer an)."""
     found = item.get("itemLocation", {}).get("country")
     return bool(country and found and found != country)
+
+
+def excluded_globally(item, config):
+    """Für alle Suchen gesperrt, z. B. Domains: per Kategoriename oder Titelmuster. Gibt den Grund zurück."""
+    names = " / ".join(c.get("categoryName", "") for c in item.get("categories", [])).lower()
+    for word in config.get("exclude_categories", []):
+        if word.lower() in names:
+            return f"Kategorie '{word}'"
+    title = item.get("title", "")
+    for pattern in config.get("exclude_title_patterns", []):
+        if re.search(pattern, title, re.IGNORECASE):
+            return f"Titelmuster '{pattern}'"
+    return ""

@@ -49,11 +49,11 @@ class EbayClient:
         return r.json()
 
     def search(self, *, keywords="", category_ids=(), filters=(), sort=None, limit=200, max_items=1000,
-               ends_before=None):
+               ends_before=None, ends_after=None):
         """Liefert itemSummaries, blättert bis max_items.
 
-        Mit ends_before (ISO-Zeit) werden nur Artikel geliefert, die bis dahin enden. Bei
-        sort=endingSoonest hört das Blättern auf, sobald eine Seite darüber hinausgeht.
+        Mit ends_before/ends_after (ISO-Zeit) werden nur Artikel geliefert, die in diesem Zeitraum
+        enden. Bei sort=endingSoonest hört das Blättern auf, sobald eine Seite darüber hinausgeht.
         """
         params = {"limit": min(limit, 200), "filter": ",".join(filters)}
         if keywords:
@@ -68,10 +68,12 @@ class EbayClient:
             page = self._get("/buy/browse/v1/item_summary/search", params)
             batch = page.get("itemSummaries", [])
             offset += len(batch)
-            if ends_before:
-                in_window = [i for i in batch if i.get("itemEndDate", "") <= ends_before]
-                items.extend(in_window)
-                if sort == "endingSoonest" and len(in_window) < len(batch):
+            if ends_before or ends_after:
+                items.extend(i for i in batch
+                             if (not ends_before or i.get("itemEndDate", "") <= ends_before)
+                             and (not ends_after or i.get("itemEndDate", "") >= ends_after))
+                if sort == "endingSoonest" and ends_before and any(
+                        i.get("itemEndDate", "") > ends_before for i in batch):
                     break
             else:
                 items.extend(batch)
@@ -83,7 +85,9 @@ class EbayClient:
         return self._get(f"/buy/browse/v1/item/{item_id}")
 
 
-def end_window_filter(hours, now=None):
+def end_window_filter(hours, now=None, from_hours=0):
+    """Filter für Auktionen, die zwischen now+from_hours und now+hours enden."""
     now = now or datetime.now(timezone.utc)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
-    return f"itemEndDate:[{now.strftime(fmt)}..{(now + timedelta(hours=hours)).strftime(fmt)}]"
+    start, end = now + timedelta(hours=from_hours), now + timedelta(hours=hours)
+    return f"itemEndDate:[{start.strftime(fmt)}..{end.strftime(fmt)}]"

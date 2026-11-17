@@ -19,6 +19,8 @@ LOCAL_TZ = ZoneInfo("Europe/Berlin")
 # eBay setzt das Tageslimit der API um Mitternacht US-Westküstenzeit zurück.
 EBAY_TZ = ZoneInfo("America/Los_Angeles")
 ERROR_ALERT_EVERY = timedelta(hours=6)
+# So lange merken wir uns gemeldete Artikel, um Neueinstellungen nicht noch einmal zu melden.
+RELIST_MEMORY_DAYS = 30
 
 
 def load_state():
@@ -102,6 +104,11 @@ def run(config):
     budget = config.get("max_new_items_per_run", 25)
     rows, new_hits = [], []
     locator = make_locator(config)
+    # Fingerprint (Verkäufer + Titel) -> Zeitpunkt der Meldung. Überlebt das Ende der Auktion.
+    # Ältere Meldungen vergessen: Nach so langer Zeit darf derselbe Artikel wieder gemeldet werden.
+    keep_since = now - timedelta(days=config.get("relist_memory_days", RELIST_MEMORY_DAYS))
+    notified = state["notified_listings"] = {k: v for k, v in state.get("notified_listings", {}).items()
+                                             if parse_time(v) > keep_since}
 
     run_count = state.get("run_count", 0) + 1
     state["run_count"] = run_count
@@ -200,8 +207,15 @@ def run(config):
             # Zu knapp vor Ende lohnt keine Meldung mehr, man schafft das Bieten nicht.
             minutes_left = (parse_time(item["itemEndDate"]) - now).total_seconds() / 60
             if is_hit and not entry["notified"] and minutes_left >= search.get("min_minutes_left", 15):
-                new_hits.append(row)
                 entry["notified"] = True
+                # Vom Verkäufer neu eingestellt (neue Artikelnummer, gleicher Artikel): schon gemeldet.
+                fingerprint = score.listing_fingerprint(item)
+                if fingerprint in notified:
+                    print(f"  schon gemeldet, neu eingestellt: {row['title'][:60]} ({item_id})")
+                    continue
+                if fingerprint:
+                    notified[fingerprint] = now.isoformat()
+                new_hits.append(row)
 
         costs[search["name"]] = client.calls - calls_at_start
         state["api_calls_today"] += client.calls - calls_at_start

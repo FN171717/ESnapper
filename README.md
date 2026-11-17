@@ -13,7 +13,7 @@ Alle 15 Minuten soll GitHub Actions einen Lauf starten (in der Praxis oft nur et
    - `vergleich`: auch Auktionen ohne Sofortkauf; der Referenzpreis ist der Median vergleichbarer Sofortkauf-Angebote (Suche mit den Kernbegriffen des Titels, gleiche Kategorie, gleicher Zustand). Begrenzt durch `max_new_items_per_run`.
 4. Treffer nur, wenn **beides** erfüllt ist: Differenz = Referenzpreis − Gebot − Versand mindestens `min_difference` Euro **und** Ersparnis = Differenz / Referenzpreis mindestens `min_saving`. Der Euro-Wert sorgt dafür, dass es sich lohnt, der Prozentwert für Puffer: 20.000 € Gebot bei 22.000 € Sofortkauf sind zwar 2.000 €, aber nur 9 % und damit kein Treffer. Treffer werden nach Bewertung = Differenz × Ersparnis sortiert gemeldet.
 5. Bei Treffern wird geprüft, ob ein Mindestpreis nicht erreicht ist. Solche Artikel fallen raus.
-6. Neue Treffer gehen gesammelt an jeden eingerichteten Kanal (ntfy, WhatsApp), jeder nur einmal. Die Übersicht landet auf GitHub Pages.
+6. Neue Treffer gehen gesammelt an jeden eingerichteten Kanal (ntfy, WhatsApp), jeder nur einmal. Stellt der Verkäufer einen gemeldeten Artikel mit neuer Artikelnummer neu ein, wird er nicht noch einmal gemeldet (erkannt an Verkäufername + Titel, Groß/klein und Satzzeichen egal; gemerkt für `relist_memory_days`, Standard 30 Tage). Auf der Übersicht erscheint er weiterhin. Die Übersicht landet auf GitHub Pages.
 
 Schlägt ein Lauf fehl, kommt höchstens alle 6 Stunden eine Warnung.
 

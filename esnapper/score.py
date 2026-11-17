@@ -130,3 +130,16 @@ def excluded_globally(item, config):
         if re.search(pattern, title, re.IGNORECASE):
             return f"Titelmuster '{pattern}'"
     return ""
+
+
+def listing_fingerprint(item):
+    """Erkennt denselben Artikel wieder, wenn der Verkäufer ihn neu einstellt (neue Artikelnummer).
+
+    Verkäufer + Titel ohne Groß/klein, Satzzeichen und Leerzeichen-Unterschiede. Ohne Verkäufername
+    None, sonst würden gleichnamige Artikel verschiedener Verkäufer zusammenfallen.
+    """
+    seller = (item.get("seller", {}).get("username") or "").strip().lower()
+    title = " ".join(re.findall(r"[\wäöüß]+", item.get("title", "").lower()))
+    if not seller or not title:
+        return None
+    return f"{seller}|{title}"

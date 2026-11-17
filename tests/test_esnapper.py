@@ -7,14 +7,14 @@ from esnapper import score
 
 
 def auction(item_id="1", title="Festool Kappsäge KS 120 REB", bid="100.00", ship="10.00",
-            options=("AUCTION",), price=None, hours=2, feedback="99.5", condition_id="3000"):
+            options=("AUCTION",), price=None, hours=2, feedback="99.5", condition_id="3000", seller="werkzeugprofi"):
     end = (datetime.now(timezone.utc) + timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     item = {
         "itemId": item_id, "title": title, "itemWebUrl": f"https://www.ebay.de/itm/{item_id}",
         "currentBidPrice": {"value": bid, "currency": "EUR"}, "bidCount": 3,
         "buyingOptions": list(options), "itemEndDate": end, "conditionId": condition_id,
         "shippingOptions": [{"shippingCost": {"value": ship, "currency": "EUR"}}] if ship else [],
-        "seller": {"feedbackPercentage": feedback},
+        "seller": {"feedbackPercentage": feedback, "username": seller},
     }
     if price:
         item["price"] = {"value": price, "currency": "EUR"}
@@ -85,7 +85,7 @@ def test_full_run(tmp_path, monkeypatch):
         auction("cheap", bid="100.00"),                      # 110 vs 330 -> Treffer
         auction("reserve", bid="100.00"),                    # Treffer, aber Mindestpreis nicht erreicht
         auction("pricey", bid="300.00"),                     # kein Schnäppchen
-        auction("bin", bid="50.00", options=("AUCTION", "FIXED_PRICE"), price="200.00"),  # 60 vs 200
+        auction("bin", bid="50.00", options=("AUCTION", "FIXED_PRICE"), price="200.00", seller="b"),  # 60 vs 200
     ]
     fake = FakeClient(auctions, comps, {"reserve": False})
     monkeypatch.setattr(app, "EbayClient", lambda *a, **k: fake)
@@ -260,3 +260,52 @@ def test_budget_pacing_skips_search(tmp_path, monkeypatch):
     assert app.budget_allows(state, 30, 4800, now)        # 180 <= 200
     assert not app.budget_allows(state, 60, 4800, now)    # 210 > 200
     assert app.budget_allows(state, 10_000, None, now)    # kein Limit gesetzt
+
+
+def test_listing_fingerprint_ignores_case_and_punctuation():
+    a = auction("1", title="Festool Kappsäge KS 120 REB!", seller="WerkzeugProfi")
+    b = auction("2", title="festool  kappsäge ks-120 reb", seller="werkzeugprofi")
+    assert score.listing_fingerprint(a) == score.listing_fingerprint(b)
+    assert score.listing_fingerprint(auction(seller="anderer")) != score.listing_fingerprint(a)
+    assert score.listing_fingerprint(auction(seller="")) is None
+
+
+def test_relisted_item_not_notified_again(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EBAY_CLIENT_ID", "x")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "y")
+    sent = []
+    monkeypatch.setattr(app, "send_notification", sent.append)
+    config = {"searches": [dict(SEARCH, compare="sofortkauf", min_difference=200, min_saving=0.9)]}
+
+    def bin_auction(item_id, seller="werkzeugprofi", title="Festool Kappsäge KS 120 REB"):
+        return auction(item_id, title=title, bid="30.00", options=("AUCTION", "FIXED_PRICE"),
+                       price="400.00", seller=seller)
+
+    monkeypatch.setattr(app, "EbayClient", lambda *a, **k: FakeClient([bin_auction("alt")], [], {}))
+    app.run(config)
+    assert len(sent) == 1 and "itm/alt" in sent[0]
+
+    # Alte Auktion ist weg, der Verkäufer hat denselben Artikel neu eingestellt.
+    # Ein anderer Verkäufer mit gleichem Titel wird weiterhin gemeldet.
+    sent.clear()
+    relisted = [bin_auction("neu", title="FESTOOL Kappsäge KS 120 REB"), bin_auction("fremd", seller="anderer")]
+    monkeypatch.setattr(app, "EbayClient", lambda *a, **k: FakeClient(relisted, [], {}))
+    app.run(config)
+    assert len(sent) == 1 and "itm/fremd" in sent[0] and "itm/neu" not in sent[0]
+    # Auf der Übersicht bleibt die Neueinstellung sichtbar.
+    assert "itm/neu" in (tmp_path / "site" / "index.html").read_text()
+
+
+def test_relist_memory_expires(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("EBAY_CLIENT_ID", "x")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "y")
+    sent = []
+    monkeypatch.setattr(app, "send_notification", sent.append)
+    old = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+    app.save_state({"items": {}, "notified_listings": {"werkzeugprofi|festool kappsäge ks 120 reb": old}})
+    item = auction("neu", bid="30.00", options=("AUCTION", "FIXED_PRICE"), price="400.00")
+    monkeypatch.setattr(app, "EbayClient", lambda *a, **k: FakeClient([item], [], {}))
+    app.run({"searches": [dict(SEARCH, compare="sofortkauf", min_difference=200, min_saving=0.9)]})
+    assert len(sent) == 1

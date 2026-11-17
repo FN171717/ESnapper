@@ -14,6 +14,10 @@ daily_api_limit: 4500
 exclude_categories: ["domain", "website", "webseite"]
 exclude_title_patterns: ['\bdomains?\b', '\bdomainnamen?\b', '\bwebsites?\b', '\bwebseiten?\b']
 
+# Neu eingestellte Artikel: Was schon gemeldet wurde, wird so viele Tage nicht noch einmal gemeldet,
+# auch wenn der Verkäufer es mit neuer Artikelnummer neu einstellt (erkannt an Verkäufer + Titel).
+relist_memory_days: 30
+
 # Vorlaufzeit: Gemeldet wird nur, was noch mindestens min_minutes_left (120 = 2 Stunden) läuft.
 # Das Zeitfenster ends_within_hours (3,5 h) ist größer, weil GitHub die Läufe oft nur etwa stündlich startet:
 # So wird jede Auktion mindestens einmal gesehen, solange noch 2 bis 3,5 Stunden übrig sind.
